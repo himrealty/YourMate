@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head><title>Fees</title><link rel="stylesheet" href="/style.css"></head>
+<body>
+    <nav><a href="/">Back</a></nav>
+    <div class="container">
+        <h2>Fees Management</h2>
+        <form action="/fees" method="POST" class="card">
+            <input type="text" name="studentName" placeholder="Student Name" required>
+            <input type="number" name="amount" placeholder="Amount" required>
+            <select name="status">
+                <option value="Paid">Paid</option>
+                <option value="Pending">Pending</option>
+                <option value="Overdue">Overdue</option>
+            </select>
+            <button type="submit">Record Fee</button>
+        </form>
+        <div class="card">
+            <h3>Fee History</h3>
+            <table>
+                <tr><th>Student</th><th>Amount</th><th>Status</th></tr>
+                <% fees.forEach(f => { %>
+                    <tr><td><%= f.studentName %></td><td><%= f.amount %></td><td><%= f.status %></td></tr>
+                <% }) %>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

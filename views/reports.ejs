@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head><title>Reports</title><link rel="stylesheet" href="/style.css"></head>
+<body>
+    <nav><a href="/">Back</a></nav>
+    <div class="container">
+        <h2>Marks Analysis</h2>
+        <form action="/reports" method="POST" class="card">
+            <input type="text" name="studentName" placeholder="Student Name" required>
+            <input type="number" name="marksObtained" placeholder="Marks Obtained" required>
+            <input type="number" name="totalMarks" placeholder="Total Marks" required>
+            <button type="submit">Add Report</button>
+        </form>
+        <div class="card">
+            <h3>Performance Report</h3>
+            <table>
+                <tr><th>Student</th><th>Marks</th><th>Percentage</th></tr>
+                <% reports.forEach(r => { %>
+                    <tr>
+                        <td><%= r.studentName %></td>
+                        <td><%= r.marksObtained %>/<%= r.totalMarks %></td>
+                        <td><%= ((r.marksObtained/r.totalMarks)*100).toFixed(2) %>%</td>
+                    </tr>
+                <% }) %>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

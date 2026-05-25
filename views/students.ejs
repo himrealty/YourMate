@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head><title>Students</title><link rel="stylesheet" href="/style.css"></head>
+<body>
+    <nav><a href="/">Back</a></nav>
+    <div class="container">
+        <h2>Student Registration</h2>
+        <form action="/students" method="POST" class="card">
+            <input type="text" name="name" placeholder="Full Name" required>
+            <input type="email" name="email" placeholder="Email">
+            <input type="text" name="phone" placeholder="Phone">
+            <button type="submit">Add Student</button>
+        </form>
+        <div class="card">
+            <h3>Registered Students</h3>
+            <table>
+                <tr><th>Name</th><th>Email</th><th>Phone</th></tr>
+                <% students.forEach(s => { %>
+                    <tr><td><%= s.name %></td><td><%= s.email %></td><td><%= s.phone %></td></tr>
+                <% }) %>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

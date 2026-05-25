@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head><title>YourMate Dashboard</title><link rel="stylesheet" href="/style.css"></head>
+<body>
+    <nav>
+        <a href="/">Dashboard</a>
+        <a href="/students">Students</a>
+        <a href="/attendance">Attendance</a>
+        <a href="/fees">Fees</a>
+        <a href="/reminders">Reminders</a>
+        <a href="/homework">Homework</a>
+        <a href="/reports">Reports</a>
+    </nav>
+    <div class="container">
+        <h1>Welcome to YourMate</h1>
+        <div class="stats-grid">
+            <div class="stat-box"><h3>Total Students</h3><p><%= stats.studentCount %></p></div>
+            <div class="stat-box"><h3>Attendance Records</h3><p><%= stats.attendanceCount %></p></div>
+            <div class="stat-box"><h3>Pending Fees</h3><p><%= stats.pendingFees %></p></div>
+        </div>
+    </div>
+</body>
+</html>

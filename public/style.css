@@ -1,0 +1,13 @@
+body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f4f7f6; }
+nav { background: #2c3e50; padding: 1rem; color: white; display: flex; gap: 15px; }
+nav a { color: white; text-decoration: none; font-weight: bold; }
+.container { padding: 2rem; max-width: 1000px; margin: auto; }
+.card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 1rem; }
+input, select, textarea { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;}
+button { background: #27ae60; color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 4px; }
+button:hover { background: #219150; }
+table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+th { background-color: #f2f2f2; }
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+.stat-box { background: #3498db; color: white; padding: 1rem; text-align: center; border-radius: 8px; }

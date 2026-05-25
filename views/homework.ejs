@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head><title>Homework</title><link rel="stylesheet" href="/style.css"></head>
+<body>
+    <nav><a href="/">Back</a></nav>
+    <div class="container">
+        <h2>Homework Assignment</h2>
+        <form action="/homework" method="POST" class="card">
+            <input type="text" name="subject" placeholder="Subject" required>
+            <textarea name="description" placeholder="Assignment details..." rows="3"></textarea>
+            <input type="date" name="dueDate" required>
+            <button type="submit">Assign Homework</button>
+        </form>
+        <div class="card">
+            <h3>Active Assignments</h3>
+            <table>
+                <tr><th>Subject</th><th>Description</th><th>Due Date</th></tr>
+                <% homeworks.forEach(h => { %>
+                    <tr><td><%= h.subject %></td><td><%= h.description %></td><td><%= h.dueDate %></td></tr>
+                <% }) %>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

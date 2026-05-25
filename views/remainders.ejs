@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head><title>Reminders</title><link rel="stylesheet" href="/style.css"></head>
+<body>
+    <nav><a href="/">Back</a></nav>
+    <div class="container">
+        <h2>Reminders & Notes</h2>
+        <form action="/reminders" method="POST" class="card">
+            <input type="text" name="title" placeholder="Title" required>
+            <textarea name="content" placeholder="Note details..." rows="3"></textarea>
+            <input type="date" name="date" required>
+            <button type="submit">Add Reminder</button>
+        </form>
+        <div class="card">
+            <% reminders.forEach(r => { %>
+                <div style="border-bottom:1px solid #eee; padding:10px;">
+                    <strong><%= r.title %></strong> (<%= r.date %>)
+                    <p><%= r.content %></p>
+                </div>
+            <% }) %>
+        </div>
+    </div>
+</body>
+</html>
