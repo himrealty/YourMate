@@ -111,22 +111,25 @@
     </div>
   </div>
 
-<div id="settingsPanel" class="tab-panel">
-  <div style="background:white; border-radius:24px; padding:24px; max-width:700px;">
-    <h3><i class="fas fa-link"></i> Vercel Proxy Configuration</h3>
-    <p style="margin:12px 0; color:#64748b;">All API calls route through <code>/api/proxy</code> on Vercel. Set <strong>GAS_URL</strong> in your Vercel environment variables.</p>
-    <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:16px; padding:16px; margin:16px 0;">
-      <strong style="color:#15803d;"><i class="fas fa-check-circle"></i> Setup</strong>
-      <ol style="margin-top:10px; padding-left:20px; color:#374151; line-height:2;">
-        <li>Vercel Dashboard → Project → <strong>Settings → Environment Variables</strong></li>
-        <li>Add <code style="background:#e5e7eb; padding:2px 8px; border-radius:6px;">GAS_URL</code> = your Apps Script URL</li>
-        <li>Redeploy</li>
-      </ol>
+  <div id="settingsPanel" class="tab-panel">
+    <div style="background:white; border-radius:24px; padding:24px; max-width:700px;">
+      <h3><i class="fas fa-link"></i> Vercel Proxy Configuration</h3>
+      <p style="margin:12px 0; color:#64748b;">All API calls are routed through <code>/api/proxy</code> on Vercel — no CORS issues. Your Google Apps Script URL is set as the <strong>GAS_URL</strong> environment variable in your Vercel dashboard.</p>
+      <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:16px; padding:16px; margin:16px 0;">
+        <strong style="color:#15803d;"><i class="fas fa-check-circle"></i> Setup Steps</strong>
+        <ol style="margin-top:10px; padding-left:20px; color:#374151; line-height:2;">
+          <li>Deploy this project to Vercel</li>
+          <li>Go to <strong>Vercel Dashboard → Your Project → Settings → Environment Variables</strong></li>
+          <li>Add variable: <code style="background:#e5e7eb; padding:2px 8px; border-radius:6px;">GAS_URL</code> = your full Apps Script URL</li>
+          <li>Redeploy (Vercel does this automatically after adding env vars)</li>
+        </ol>
+      </div>
+      <input type="text" id="appScriptUrl" placeholder="https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec (for reference only)" style="width:100%; margin:10px 0; padding:12px; border-radius:28px; border:1px solid #cbd5e1; color:#94a3b8;">
+      <div style="display:flex; gap:12px; margin-top:12px;"><button class="btn-primary" id="saveSettingsBtn"><i class="fas fa-save"></i> Save Reference URL</button><button class="btn-secondary" id="testConnBtn"><i class="fas fa-plug"></i> Test Proxy Connection</button></div>
+      <p class="stat-sub" style="margin-top:20px;"><i class="fas fa-shield-alt"></i> Proxy endpoint: <code>/api/proxy</code> — CORS is handled server-side by Vercel.</p>
     </div>
-    <button class="btn-secondary" id="testConnBtn"><i class="fas fa-plug"></i> Test Connection</button>
-    <p class="stat-sub" style="margin-top:20px;"><i class="fas fa-shield-alt"></i> Proxy: <code>/api/proxy</code></p>
   </div>
-</div></div>
+</div>
 
 <div id="genericModal" class="modal"><div class="modal-card"><h3 id="modalTitle">Modal</h3><div id="modalBody"></div><div class="modal-actions"><button class="btn-secondary" id="modalCancelBtn">Cancel</button><button class="btn-primary" id="modalConfirmBtn">Confirm</button></div></div></div>
 
@@ -361,7 +364,25 @@
   function closeModal() { document.getElementById('genericModal').style.display = 'none'; }
   function escapeHtml(str) { if(!str) return ''; return str.replace(/[&<>]/g, function(m){ if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
 
-  document.getElementById('testConnBtn')?.addEventListener('click', async () => { if(!API_URL) { showToast('Save URL first', true); return; } try { await callApi('getClasses'); showToast('✅ Connection successful!'); } catch(e) { showToast('Connection failed. Check CORS and URL', true); } });
+  // Event binding
+  document.getElementById('saveSettingsBtn')?.addEventListener('click', () => {
+    let url = document.getElementById('appScriptUrl').value.trim();
+    if(!url) { showToast('Please enter a valid URL', true); return; }
+    localStorage.setItem('yourmate_api_url', url);
+    API_URL = url;
+    showToast('✅ URL saved. Connecting to Google Sheets...');
+    refreshAllData();
+  });
+  document.getElementById('testConnBtn')?.addEventListener('click', async () => {
+    try { await callApi('getClasses'); showToast('✅ Connected to Neon Postgres!'); }
+    catch(e) { showToast('❌ Connection failed. Check DATABASE_URL in Vercel.', true); }
+  });
+  document.getElementById('initDbBtn')?.addEventListener('click', async () => {
+    showLoading(true);
+    try { await callApi('initTables'); showToast('✅ Database tables created!'); await refreshAllData(); }
+    catch(e) { showToast('❌ Init failed: ' + e.message, true); }
+    finally { showLoading(false); }
+  });
   document.getElementById('addClassBtn')?.addEventListener('click', () => openClassModal());
   document.getElementById('addStudentBtn')?.addEventListener('click', () => openStudentModal());
   document.getElementById('recordPaymentBtn')?.addEventListener('click', () => recordPaymentModal());
@@ -393,6 +414,9 @@
       });
     });
   }
+
+  let savedUrl = localStorage.getItem('yourmate_api_url');
+  if(savedUrl) { document.getElementById('appScriptUrl').value = savedUrl; API_URL = savedUrl; }
   refreshAllData(); // Always load data on startup via Vercel proxy
   initTabs();
 </script>
