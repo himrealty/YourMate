@@ -6,7 +6,6 @@ function generateId(prefix) {
   return `${prefix}_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
 }
 
-// ── CORS headers ──────────────────────────────────────────────
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -25,7 +24,7 @@ function err(msg, code = 500) {
   });
 }
 
-// ── INIT TABLES (run once) ────────────────────────────────────
+// ── INIT / MIGRATE TABLES ─────────────────────────────────────
 async function initTables() {
   await sql`
     CREATE TABLE IF NOT EXISTS classes (
@@ -39,12 +38,24 @@ async function initTables() {
     CREATE TABLE IF NOT EXISTS students (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
-      class_id TEXT REFERENCES classes(id) ON DELETE SET NULL,
+      parent_name TEXT,
       parent_contact TEXT,
+      whatsapp_number TEXT,
+      address TEXT,
+      date_of_birth TEXT,
+      gender TEXT,
+      class_id TEXT REFERENCES classes(id) ON DELETE SET NULL,
       enrollment_date TIMESTAMPTZ DEFAULT NOW(),
       total_fees INTEGER DEFAULT 0,
-      paid_amount INTEGER DEFAULT 0
+      paid_amount INTEGER DEFAULT 0,
+      notes TEXT
     )`;
+  await sql`ALTER TABLE students ADD COLUMN IF NOT EXISTS parent_name TEXT`;
+  await sql`ALTER TABLE students ADD COLUMN IF NOT EXISTS whatsapp_number TEXT`;
+  await sql`ALTER TABLE students ADD COLUMN IF NOT EXISTS address TEXT`;
+  await sql`ALTER TABLE students ADD COLUMN IF NOT EXISTS date_of_birth TEXT`;
+  await sql`ALTER TABLE students ADD COLUMN IF NOT EXISTS gender TEXT`;
+  await sql`ALTER TABLE students ADD COLUMN IF NOT EXISTS notes TEXT`;
   await sql`
     CREATE TABLE IF NOT EXISTS fees (
       id TEXT PRIMARY KEY,
@@ -92,36 +103,77 @@ async function deleteClass(data) {
 
 // ── STUDENTS ──────────────────────────────────────────────────
 async function getStudents(data) {
-  let rows = await sql`
-    SELECT s.*, c.name AS class_name
-    FROM students s
-    LEFT JOIN classes c ON s.class_id = c.id
-    ORDER BY s.enrollment_date DESC`;
+  let rows;
+  if (data.studentId) {
+    rows = await sql`
+      SELECT s.*, c.name AS class_name FROM students s
+      LEFT JOIN classes c ON s.class_id = c.id
+      WHERE s.id = ${data.studentId}`;
+  } else {
+    rows = await sql`
+      SELECT s.*, c.name AS class_name FROM students s
+      LEFT JOIN classes c ON s.class_id = c.id
+      ORDER BY s.enrollment_date DESC`;
+  }
 
   let students = rows.map(r => ({
-    id: r.id, name: r.name, classId: r.class_id,
+    id: r.id,
+    name: r.name,
+    parentName: r.parent_name || '',
+    parentContact: r.parent_contact || '',
+    whatsappNumber: r.whatsapp_number || r.parent_contact || '',
+    address: r.address || '',
+    dateOfBirth: r.date_of_birth || '',
+    gender: r.gender || '',
+    classId: r.class_id,
     className: r.class_name || 'Unknown',
-    parentContact: r.parent_contact,
     enrollmentDate: r.enrollment_date,
     totalFees: r.total_fees || 0,
-    paidAmount: r.paid_amount || 0
+    paidAmount: r.paid_amount || 0,
+    notes: r.notes || ''
   }));
 
   if (data.classId) students = students.filter(s => s.classId === data.classId);
-  if (data.search) students = students.filter(s => s.name.toLowerCase().includes(data.search.toLowerCase()));
+  if (data.search) students = students.filter(s =>
+    s.name.toLowerCase().includes(data.search.toLowerCase()) ||
+    (s.parentContact || '').includes(data.search) ||
+    (s.whatsappNumber || '').includes(data.search)
+  );
   return students;
 }
 
 async function addStudent(data) {
   const id = generateId('STU');
-  await sql`INSERT INTO students (id, name, class_id, parent_contact, total_fees, paid_amount)
-    VALUES (${id}, ${data.name}, ${data.classId}, ${data.parentContact}, ${data.totalFees || 0}, 0)`;
+  await sql`INSERT INTO students 
+    (id, name, parent_name, parent_contact, whatsapp_number, address, date_of_birth, gender, class_id, total_fees, paid_amount, notes)
+    VALUES (
+      ${id}, ${data.name}, ${data.parentName||null}, ${data.parentContact||null},
+      ${data.whatsappNumber||data.parentContact||null}, ${data.address||null},
+      ${data.dateOfBirth||null}, ${data.gender||null}, ${data.classId},
+      ${data.totalFees||0}, 0, ${data.notes||null}
+    )`;
   return { message: 'Student added', id };
 }
 
 async function updateStudent(data) {
-  await sql`UPDATE students SET name=${data.name}, class_id=${data.classId}, parent_contact=${data.parentContact}, total_fees=${data.totalFees} WHERE id=${data.id}`;
+  await sql`UPDATE students SET
+    name=${data.name},
+    parent_name=${data.parentName||null},
+    parent_contact=${data.parentContact||null},
+    whatsapp_number=${data.whatsappNumber||data.parentContact||null},
+    address=${data.address||null},
+    date_of_birth=${data.dateOfBirth||null},
+    gender=${data.gender||null},
+    class_id=${data.classId},
+    total_fees=${data.totalFees||0},
+    notes=${data.notes||null}
+    WHERE id=${data.id}`;
   return { message: 'Student updated' };
+}
+
+async function updateStudentFees(data) {
+  await sql`UPDATE students SET total_fees=${data.totalFees} WHERE id=${data.id}`;
+  return { message: 'Fees updated' };
 }
 
 async function deleteStudent(data) {
@@ -131,9 +183,15 @@ async function deleteStudent(data) {
 
 // ── FEES ──────────────────────────────────────────────────────
 async function getFees(data) {
-  let rows = data.month
-    ? await sql`SELECT * FROM fees WHERE month=${data.month} ORDER BY payment_date DESC`
-    : await sql`SELECT * FROM fees ORDER BY payment_date DESC`;
+  let rows;
+  if (data.studentId && data.month)
+    rows = await sql`SELECT * FROM fees WHERE student_id=${data.studentId} AND month=${data.month} ORDER BY payment_date DESC`;
+  else if (data.studentId)
+    rows = await sql`SELECT * FROM fees WHERE student_id=${data.studentId} ORDER BY payment_date DESC`;
+  else if (data.month)
+    rows = await sql`SELECT * FROM fees WHERE month=${data.month} ORDER BY payment_date DESC`;
+  else
+    rows = await sql`SELECT * FROM fees ORDER BY payment_date DESC`;
 
   return rows.map(r => ({
     id: r.id, studentId: r.student_id, month: r.month,
@@ -163,10 +221,12 @@ async function getFeeSummary() {
 // ── ATTENDANCE ────────────────────────────────────────────────
 async function getAttendance(data) {
   let rows;
-  if (data.classId && data.date)
+  if (data.studentId)
+    rows = await sql`SELECT * FROM attendance WHERE student_id=${data.studentId} ORDER BY date DESC`;
+  else if (data.classId && data.date)
     rows = await sql`SELECT * FROM attendance WHERE class_id=${data.classId} AND date=${data.date}`;
   else if (data.classId)
-    rows = await sql`SELECT * FROM attendance WHERE class_id=${data.classId}`;
+    rows = await sql`SELECT * FROM attendance WHERE class_id=${data.classId} ORDER BY date DESC`;
   else if (data.date)
     rows = await sql`SELECT * FROM attendance WHERE date=${data.date}`;
   else
@@ -176,7 +236,6 @@ async function getAttendance(data) {
 }
 
 async function markAttendance(data) {
-  // Upsert: update if exists for same student+date, insert otherwise
   const existing = await sql`SELECT id FROM attendance WHERE student_id=${data.studentId} AND date=${data.date}`;
   if (existing.length > 0) {
     await sql`UPDATE attendance SET status=${data.status} WHERE student_id=${data.studentId} AND date=${data.date}`;
@@ -203,31 +262,30 @@ async function getAttendanceStats() {
 // ── MAIN HANDLER ──────────────────────────────────────────────
 export default async function handler(req) {
   if (req.method === 'OPTIONS') return new Response('', { status: 200, headers: CORS });
-
   if (req.method !== 'POST') return err('Method not allowed', 405);
-
-  if (!process.env.DATABASE_URL) return err('DATABASE_URL not set in Vercel environment variables');
+  if (!process.env.DATABASE_URL) return err('DATABASE_URL not set');
 
   try {
     const body = await req.json();
     const { action, ...data } = body;
-
     let result;
+
     switch (action) {
-      case 'initTables':       result = await initTables(); break;
-      case 'getClasses':       result = await getClasses(); break;
-      case 'addClass':         result = await addClass(data); break;
-      case 'updateClass':      result = await updateClass(data); break;
-      case 'deleteClass':      result = await deleteClass(data); break;
-      case 'getStudents':      result = await getStudents(data); break;
-      case 'addStudent':       result = await addStudent(data); break;
-      case 'updateStudent':    result = await updateStudent(data); break;
-      case 'deleteStudent':    result = await deleteStudent(data); break;
-      case 'getFees':          result = await getFees(data); break;
-      case 'recordPayment':    result = await recordPayment(data); break;
-      case 'getFeeSummary':    result = await getFeeSummary(); break;
-      case 'getAttendance':    result = await getAttendance(data); break;
-      case 'markAttendance':   result = await markAttendance(data); break;
+      case 'initTables':         result = await initTables(); break;
+      case 'getClasses':         result = await getClasses(); break;
+      case 'addClass':           result = await addClass(data); break;
+      case 'updateClass':        result = await updateClass(data); break;
+      case 'deleteClass':        result = await deleteClass(data); break;
+      case 'getStudents':        result = await getStudents(data); break;
+      case 'addStudent':         result = await addStudent(data); break;
+      case 'updateStudent':      result = await updateStudent(data); break;
+      case 'updateStudentFees':  result = await updateStudentFees(data); break;
+      case 'deleteStudent':      result = await deleteStudent(data); break;
+      case 'getFees':            result = await getFees(data); break;
+      case 'recordPayment':      result = await recordPayment(data); break;
+      case 'getFeeSummary':      result = await getFeeSummary(); break;
+      case 'getAttendance':      result = await getAttendance(data); break;
+      case 'markAttendance':     result = await markAttendance(data); break;
       case 'getAttendanceStats': result = await getAttendanceStats(); break;
       default: return err('Unknown action: ' + action, 400);
     }
