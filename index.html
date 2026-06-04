@@ -112,21 +112,29 @@
   </div>
 
   <div id="settingsPanel" class="tab-panel">
-    <div style="background:white; border-radius:24px; padding:24px; max-width:700px;">
-      <h3><i class="fas fa-link"></i> Vercel Proxy Configuration</h3>
-      <p style="margin:12px 0; color:#64748b;">All API calls are routed through <code>/api/proxy</code> on Vercel — no CORS issues. Your Google Apps Script URL is set as the <strong>GAS_URL</strong> environment variable in your Vercel dashboard.</p>
-      <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:16px; padding:16px; margin:16px 0;">
-        <strong style="color:#15803d;"><i class="fas fa-check-circle"></i> Setup Steps</strong>
-        <ol style="margin-top:10px; padding-left:20px; color:#374151; line-height:2;">
-          <li>Deploy this project to Vercel</li>
-          <li>Go to <strong>Vercel Dashboard → Your Project → Settings → Environment Variables</strong></li>
-          <li>Add variable: <code style="background:#e5e7eb; padding:2px 8px; border-radius:6px;">GAS_URL</code> = your full Apps Script URL</li>
-          <li>Redeploy (Vercel does this automatically after adding env vars)</li>
-        </ol>
+    <div style="display:flex; flex-direction:column; gap:20px; max-width:700px;">
+
+      <div style="background:white; border-radius:24px; padding:24px; border:1px solid #eef2f6;">
+        <h3><i class="fas fa-database"></i> Neon Postgres</h3>
+        <p style="margin:12px 0; color:#64748b;">Set <strong>DATABASE_URL</strong> in Vercel environment variables.</p>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:16px;">
+          <button class="btn-primary" id="initDbBtn"><i class="fas fa-table"></i> Init Database</button>
+          <button class="btn-secondary" id="testConnBtn"><i class="fas fa-plug"></i> Test Connection</button>
+        </div>
       </div>
-      <input type="text" id="appScriptUrl" placeholder="https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec (for reference only)" style="width:100%; margin:10px 0; padding:12px; border-radius:28px; border:1px solid #cbd5e1; color:#94a3b8;">
-      <div style="display:flex; gap:12px; margin-top:12px;"><button class="btn-primary" id="saveSettingsBtn"><i class="fas fa-save"></i> Save Reference URL</button><button class="btn-secondary" id="testConnBtn"><i class="fas fa-plug"></i> Test Proxy Connection</button></div>
-      <p class="stat-sub" style="margin-top:20px;"><i class="fas fa-shield-alt"></i> Proxy endpoint: <code>/api/proxy</code> — CORS is handled server-side by Vercel.</p>
+
+      <div style="background:white; border-radius:24px; padding:24px; border:1px solid #eef2f6;">
+        <h3><i class="fab fa-whatsapp" style="color:#25d366;"></i> WhatsApp (Gowa)</h3>
+        <p style="margin:12px 0; color:#64748b;">Connect your self-hosted <a href="https://github.com/aldinokemal/go-whatsapp-web-multidevice" target="_blank">go-whatsapp-web-multidevice</a> instance to send fee reminders.</p>
+        <input type="text" id="gowaUrl" placeholder="https://graphicywa.onrender.com" style="width:100%; margin:8px 0; padding:12px; border-radius:20px; border:1px solid #cbd5e1;">
+        <input type="text" id="gowaToken" placeholder="Basic auth token (if enabled, else leave blank)" style="width:100%; margin:8px 0; padding:12px; border-radius:20px; border:1px solid #cbd5e1;">
+        <div style="display:flex; gap:12px; margin-top:8px;">
+          <button class="btn-primary" id="saveGowaBtn"><i class="fas fa-save"></i> Save</button>
+          <button class="btn-secondary" id="testGowaBtn"><i class="fab fa-whatsapp"></i> Test Connection</button>
+        </div>
+        <p class="stat-sub" style="margin-top:12px;"><i class="fas fa-info-circle"></i> Phone numbers must include country code, no + or spaces (e.g. 919876543210)</p>
+      </div>
+
     </div>
   </div>
 </div>
@@ -261,8 +269,15 @@
 
   async function renderFees() {
     if(!students.length) { document.getElementById('feesTableContainer').innerHTML = '<div class="empty-state">No fee data available</div>'; return; }
-    let rows = students.map(s => { let due = (s.totalFees || 0) - (s.paidAmount || 0); let status = due === 0 ? "Paid" : (s.paidAmount > 0 ? "Partial" : "Unpaid"); let badgeClass = status === "Paid" ? "badge-paid" : (status === "Partial" ? "badge-partial" : "badge-unpaid"); return `<tr><td>${escapeHtml(s.name)}</td><td>${escapeHtml(s.className)}</td><td>₹${s.totalFees || 0}</td><td><span class="badge ${badgeClass}">${status}</span></td><td>₹${s.paidAmount || 0}</td><td>₹${due}</td></tr>`; }).join('');
-    document.getElementById('feesTableContainer').innerHTML = `<table><thead><tr><th>Student</th><th>Class</th><th>Total Fees</th><th>Status</th><th>Paid</th><th>Due</th></tr></thead><tbody>${rows}</tbody></table>`;
+    let rows = students.map(s => {
+      let due = (s.totalFees || 0) - (s.paidAmount || 0);
+      let status = due === 0 ? "Paid" : (s.paidAmount > 0 ? "Partial" : "Unpaid");
+      let badgeClass = status === "Paid" ? "badge-paid" : (status === "Partial" ? "badge-partial" : "badge-unpaid");
+      let waBtn = status !== "Paid" ? `<button class="send-wa-reminder" data-id="${s.id}" title="Send WhatsApp Reminder" style="background:none; border:none; color:#25d366; cursor:pointer; font-size:1.1rem;"><i class="fab fa-whatsapp"></i></button>` : '<span style="color:#cbd5e1;"><i class="fab fa-whatsapp"></i></span>';
+      return `<tr><td>${escapeHtml(s.name)}</td><td>${escapeHtml(s.className)}</td><td>₹${s.totalFees || 0}</td><td><span class="badge ${badgeClass}">${status}</span></td><td>₹${s.paidAmount || 0}</td><td>₹${due}</td><td>${waBtn}</td></tr>`;
+    }).join('');
+    document.getElementById('feesTableContainer').innerHTML = `<table><thead><tr><th>Student</th><th>Class</th><th>Total Fees</th><th>Status</th><th>Paid</th><th>Due</th><th><i class="fab fa-whatsapp" style="color:#25d366;"></i></th></tr></thead><tbody>${rows}</tbody></table>`;
+    document.querySelectorAll('.send-wa-reminder').forEach(btn => btn.addEventListener('click', () => sendWaReminder(btn.dataset.id)));
     await fetchFeeSummary();
   }
 
@@ -364,15 +379,40 @@
   function closeModal() { document.getElementById('genericModal').style.display = 'none'; }
   function escapeHtml(str) { if(!str) return ''; return str.replace(/[&<>]/g, function(m){ if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
 
+  // ── WhatsApp (Gowa) ──────────────────────────────────────────
+  let GOWA_URL = localStorage.getItem('yourmate_gowa_url') || '';
+  let GOWA_TOKEN = localStorage.getItem('yourmate_gowa_token') || '';
+
+  async function sendWhatsApp(phone, message) {
+    if (!GOWA_URL) { showToast('⚠️ Set Gowa URL in Settings first', true); return false; }
+    // Sanitize phone: strip +, spaces, dashes
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    const headers = { 'Content-Type': 'application/json' };
+    if (GOWA_TOKEN) headers['Authorization'] = 'Basic ' + GOWA_TOKEN;
+    const res = await fetch(`${GOWA_URL}/api/send/message`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ phone: cleanPhone, message })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Send failed');
+    return true;
+  }
+
+  async function sendWaReminder(studentId) {
+    const s = students.find(x => x.id === studentId);
+    if (!s) return;
+    const due = (s.totalFees || 0) - (s.paidAmount || 0);
+    const message = `Dear Parent,\n\nThis is a reminder from YourMate Coaching.\n\nStudent: ${s.name}\nClass: ${s.className}\nFee Due: ₹${due}\n\nPlease clear the dues at your earliest convenience.\n\nThank you.`;
+    try {
+      await sendWhatsApp(s.parentContact, message);
+      showToast(`✅ Reminder sent to ${s.name}'s parent`);
+    } catch(e) {
+      showToast(`❌ Failed: ${e.message}`, true);
+    }
+  }
+
   // Event binding
-  document.getElementById('saveSettingsBtn')?.addEventListener('click', () => {
-    let url = document.getElementById('appScriptUrl').value.trim();
-    if(!url) { showToast('Please enter a valid URL', true); return; }
-    localStorage.setItem('yourmate_api_url', url);
-    API_URL = url;
-    showToast('✅ URL saved. Connecting to Google Sheets...');
-    refreshAllData();
-  });
   document.getElementById('testConnBtn')?.addEventListener('click', async () => {
     try { await callApi('getClasses'); showToast('✅ Connected to Neon Postgres!'); }
     catch(e) { showToast('❌ Connection failed. Check DATABASE_URL in Vercel.', true); }
@@ -382,6 +422,23 @@
     try { await callApi('initTables'); showToast('✅ Database tables created!'); await refreshAllData(); }
     catch(e) { showToast('❌ Init failed: ' + e.message, true); }
     finally { showLoading(false); }
+  });
+  document.getElementById('saveGowaBtn')?.addEventListener('click', () => {
+    GOWA_URL = document.getElementById('gowaUrl').value.trim().replace(/\/$/, '');
+    GOWA_TOKEN = document.getElementById('gowaToken').value.trim();
+    localStorage.setItem('yourmate_gowa_url', GOWA_URL);
+    localStorage.setItem('yourmate_gowa_token', GOWA_TOKEN);
+    showToast('✅ Gowa settings saved');
+  });
+  document.getElementById('testGowaBtn')?.addEventListener('click', async () => {
+    if (!GOWA_URL) { showToast('Enter Gowa URL first', true); return; }
+    try {
+      const headers = {};
+      if (GOWA_TOKEN) headers['Authorization'] = 'Basic ' + GOWA_TOKEN;
+      const res = await fetch(`${GOWA_URL}/api/app`, { headers });
+      if (res.ok) showToast('✅ Gowa connected!');
+      else showToast('❌ Gowa responded with ' + res.status, true);
+    } catch(e) { showToast('❌ Cannot reach Gowa: ' + e.message, true); }
   });
   document.getElementById('addClassBtn')?.addEventListener('click', () => openClassModal());
   document.getElementById('addStudentBtn')?.addEventListener('click', () => openStudentModal());
@@ -415,9 +472,10 @@
     });
   }
 
-  let savedUrl = localStorage.getItem('yourmate_api_url');
-  if(savedUrl) { document.getElementById('appScriptUrl').value = savedUrl; API_URL = savedUrl; }
-  refreshAllData(); // Always load data on startup via Vercel proxy
+  // Restore Gowa settings
+  if(GOWA_URL) document.getElementById('gowaUrl').value = GOWA_URL;
+  if(GOWA_TOKEN) document.getElementById('gowaToken').value = GOWA_TOKEN;
+  refreshAllData();
   initTabs();
 </script>
 </body>
